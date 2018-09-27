@@ -23,7 +23,7 @@ COMMAND_ON_FAILURE = """echo 'server down' """
 
 
 API_URL_FF = 'http://archive.4plebs.org/_/api/chan/index/?board=adv&page=1'
-API_URL_4CH = ''
+API_URL_4CH = 'http://a.4cdn.org/adv/1.json'# Avoid https per 4ch API docs
 
 
 RECHECK_DELAY = 10# Seconds
@@ -38,15 +38,34 @@ THRESHOLD_CYCLES = 10
 
 
 def find_highest_post_num_4ch(api_data):
-    """Find the highest post number for 4chan API"""
-    return highest_post_num
+    """Find the highest post number for 4chan API
+    ex. http://a.4cdn.org/adv/1.json"""
+    highest_seen_id = 0# Initialize at 0 so we can run comparisons
+    threads = api_data['threads']
+    assert(len(threads) > 0)# Sanity check
+    for thread in threads:
+        posts = thread['posts']
+        last_post = posts[-1]# The last post in a thread will have the highest post number
+        last_post_num = last_post['no']
+
+        assert(last_post_num > 0)# Sanity check
+
+        # If the highest post in the thread is higher than our largest seen, replace the largest seen value
+        if (last_post_num > highest_seen_id):
+            highest_seen_id = last_post_num
+            print('highest_seen_id = {0}'.format(highest_seen_id))
+
+    assert(highest_seen_id > 0)# Sanity check
+    return highest_seen_id
 
 
 def find_highest_post_num_ff(api_data):
-    """Find the highest post number for foolfuuka API"""
+    """Find the highest post number for foolfuuka API
+    ex. http://archive.4plebs.org/_/api/chan/index/?board=adv&page=1"""
     highest_seen_id = 0# Initialize at 0 so we can run comparisons
     thread_nums = api_data.keys()
-    assert(len(thread_nums) >= 10)# We should have at least a full pages worth of threads (10 threads per page)
+    assert(len(thread_nums) > 0)#
+
     for thread_num in thread_nums:# For each thread in the API page
         print('thread_num = {0}'.format(thread_num))
         thread = api_data[thread_num]
@@ -62,8 +81,9 @@ def find_highest_post_num_ff(api_data):
 
         assert(last_post_num > 0)# Sanity check
 
-        if (last_post_num > highest_seen_id):# If the highest post in the thread is higher than our largest seen, replace the largest seen value
-            highest_seen_id = last_post['num']
+        # If the highest post in the thread is higher than our largest seen, replace the largest seen value
+        if (last_post_num > highest_seen_id):
+            highest_seen_id = last_post_num
             print('highest_seen_id = {0}'.format(highest_seen_id))
 
     assert(highest_seen_id > 0)# Sanity check
@@ -88,6 +108,8 @@ if __name__ == '__main__':
 
 # Setup requests session
 requests_session = requests.Session()
+
+
 
 
 # Check the highest ID on the archive
