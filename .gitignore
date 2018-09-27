@@ -1,0 +1,6 @@
+debug/
+download/
+git_ignored/
+data/
+*.pyc
+*config.py

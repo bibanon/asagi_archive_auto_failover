@@ -1,0 +1,62 @@
+asagi_archive_auto_failover_notes.txt
+Notes on auto-failover script.
+
+
+
+
+===== PLAN =====
+
+Periodically test if the archive is working.
+If it is not working, trigger some arbitary code to trigger failover.
+Failover refers to automatic reconfiguration of the host from its main job to active archival.
+
+
+
+
++++ Questions about how to do it +++
+How do we differentiate between 4chan breaking and the archive breaking?
+    Check 4chan's API for updates?
+    Do we need to store more information than the highest post_num and image_num?
+
+
+What triggers should be used to detect failure?
+    Lack of new posts?
+    Highest seen post_num not increasing in a given time period?
+    Error pages/codes accessing archive.
+    Exceptions, use pokemon-style exception handling to trigger failover on bugs.
+
+
+
+What are sensible thresholds?
+    Do these change based on the board being observed?
+    Use most active board in the archive as the failure-canary?
+    Should more than one board be tested? How many boards need to fail before triggering failover code?
+
+
+
+What sort of response should occur on failure?
+    Leave this to the admin running the script to decide, simply provide ability to run arbitary shell commands.
+
+
+
+
+
+===== Basic high-level pseudocode =====
+
+
+
+# Load archive API JSON
+
+
+
+
+
+
+
+
+
+
+
+===== USAGE =====
+
+TODO
