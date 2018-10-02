@@ -9,11 +9,19 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 # StdLib
+import time
+import os
+import random
+import logging
+import logging.handlers
+import datetime
 import json
 import subprocess
 # Remote libraries
+import requests
+import requests.exceptions
 # local
-from common import *
+##from common import *
 
 
 
@@ -59,7 +67,7 @@ class FailoverException(Exception):
 
 
 # logging setup
-def setup_logging(log_file_path,timestamp_filename=True,max_log_size=104857600):
+def setup_logging(log_file_path, timestamp_filename=True, max_log_size=104857600):
     """Setup logging (Before running any other code)
     http://inventwithpython.com/blog/2012/04/06/stop-using-print-for-debugging-a-5-minute-quickstart-guide-to-pythons-logging-module/
     """
@@ -83,7 +91,7 @@ def setup_logging(log_file_path,timestamp_filename=True,max_log_size=104857600):
 
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-    # TODO: Put new log message format example here
+    # 2018-10-02 18:16:15,229 - INFO - f.auto_failover.py - ln.117 - Logging started.
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - f.%(filename)s - ln.%(lineno)d - %(message)s")
 
     # File 1, log everything
@@ -106,10 +114,10 @@ def setup_logging(log_file_path,timestamp_filename=True,max_log_size=104857600):
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-    logging.info("Logging started.")
+    logging.info("Logging started. log_file_path = {0!r}".format(log_file_path))
     return logger
 
-def add_timestamp_to_log_filename(log_file_path,timestamp_string):
+def add_timestamp_to_log_filename(log_file_path, timestamp_string):
     """Insert a string before a file extention"""
     base, ext = os.path.splitext(log_file_path)
     return base+"_"+timestamp_string+ext
@@ -128,7 +136,7 @@ def fetch(requests_session, url, method='get', data=None, expect_status=200, hea
         headers.update(headers)
 
     for try_num in range(5):
-        logging.debug('Fetch %s' % (url))
+        logging.debug('Fetch {0}'.format(url))
         try:
             if method == 'get':
                 response = requests_session.get(url, headers=headers, timeout=300)
@@ -144,12 +152,12 @@ def fetch(requests_session, url, method='get', data=None, expect_status=200, hea
             logging.exception(err)
             logging.error('Caught requests.exceptions.ConnectionError')
             continue
-        # Allow certain error codes to be passed back out
-        if response.status_code == 404:
-            logging.error("fetch() 404 for url: %s" % url)
-            return
+##        # Allow certain error codes to be passed back out
+##        if response.status_code == 404:
+##            logging.error("fetch() 404 for url: %s" % url)
+##            return
         if response.status_code != expect_status:
-            logging.error('Problem detected. Status code mismatch. Sleeping. expect_status: %s, response.status_code: %s' % (expect_status, response.status_code))
+            logging.error('Problem detected. Status code mismatch. Sleeping. expect_status: {0!r}, response.status_code: {1!r}'.format(expect_status, response.status_code))
             time.sleep(60*try_num)
             continue
         else:
@@ -159,7 +167,8 @@ def fetch(requests_session, url, method='get', data=None, expect_status=200, hea
                 time.sleep(random.uniform(0.5, 1.5))
             return response
 
-    raise Exception('Giving up!')
+    logging.error('Too many failed retries for url: {0!r}'.format(url))
+    raise Exception('Giving up. Too many retries for url: {0!r}'.format(url))
 
 
 def run_command():
@@ -264,6 +273,7 @@ def check_archive_loop():
 
             if (number_of_new_ff_posts == 0):
                 # Archive has not gained posts since last check
+                logging.info('Archive has gained no new posts since last recheck.')
 
                 # Poll 4chan to see if it has updated
                 # Check the highest ID on 4chan
