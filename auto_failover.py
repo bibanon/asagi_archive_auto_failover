@@ -29,7 +29,7 @@ import requests.exceptions
 # Values in capitals are globals/defined at module level scope.
 
 # Command to execute if failure is detected
-COMMAND_ON_FAILURE = """cmd """
+COMMAND_ON_FAILURE = """echo "test string" """
 
 # URL to foolfuuka archive API to test for new posts
 API_URL_FF = 'http://archive.4plebs.org/_/api/chan/index/?board=adv&page=1'
@@ -38,7 +38,7 @@ API_URL_FF = 'http://archive.4plebs.org/_/api/chan/index/?board=adv&page=1'
 API_URL_4CH = 'http://a.4cdn.org/adv/1.json'# Avoid https per 4ch API docs
 
 # Delay in seconds between update check cycles
-RECHECK_DELAY = 20# Seconds
+RECHECK_DELAY = 120# Seconds
 
 # UNUSED
 #THRESHOLD_TIME = 120# Seconds
@@ -63,6 +63,11 @@ CUSTOM_DELAY = 0.1# This will use a delay of 0.1 second
 
 class FailoverException(Exception):
     """Local subclass for all custom exceptions within auto_failover.py"""
+
+
+
+class FetchTooManyRetries(FailoverException):
+    pass
 
 
 
@@ -124,7 +129,7 @@ def add_timestamp_to_log_filename(log_file_path, timestamp_string):
 # /logging setup
 
 
-def fetch(requests_session, url, method='get', data=None, expect_status=200, headers=None):
+def fetch(url, method='get', data=None, expect_status=200, headers=None):
 #    headers = {'user-agent': user_agent}
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
     if headers is None:
@@ -139,9 +144,9 @@ def fetch(requests_session, url, method='get', data=None, expect_status=200, hea
         logging.debug('Fetch {0}'.format(url))
         try:
             if method == 'get':
-                response = requests_session.get(url, headers=headers, timeout=300)
+                response = requests.get(url, headers=headers, timeout=300)
             elif method == 'post':
-                response = requests_session.post(url, headers=headers, data=data, timeout=300)
+                response = requests.post(url, headers=headers, data=data, timeout=300)
             else:
                 raise Exception('Unknown method')
         except requests.exceptions.Timeout, err:
@@ -167,8 +172,8 @@ def fetch(requests_session, url, method='get', data=None, expect_status=200, hea
                 time.sleep(random.uniform(0.5, 1.5))
             return response
 
-    logging.error('Too many failed retries for url: {0!r}'.format(url))
-    raise Exception('Giving up. Too many retries for url: {0!r}'.format(url))
+    logging.error('Giving up. Too many failed retries for url: {0!r}'.format(url))
+    return
 
 
 def run_command():
@@ -245,8 +250,6 @@ def check_archive_loop():
     Values in capitals are globals/defined at module level scope.
     """
     logging.info('Beginning polling of archive state...')
-    # Setup requests session
-    requests_session = requests.Session()
     # ===== Init state variables for loop =====
     # Init tracking vars
     consecutive_failures = 0
@@ -259,79 +262,95 @@ def check_archive_loop():
 
     # ===== Begin loop here =====
     while True:
-        # Check the highest ID on the archive
-        api_response_ff = fetch(requests_session, url=API_URL_FF, expect_status=200)
-        api_data_ff = json.loads(api_response_ff.content)
-        new_highest_post_id_ff = find_highest_post_num_ff(api_data_ff)
-        logging.debug('new_highest_post_id_ff = {0!r}'.format(new_highest_post_id_ff))
+        try:
+            # Store previous high IDs for this cycle's comparisons
+            old_highest_post_id_ff = new_highest_post_id_ff
+            old_highest_post_id_4ch = new_highest_post_id_4ch
 
-        if (old_highest_post_id_ff is not None):
-            # Only perform check if we have a previous value to compare against
-            number_of_new_ff_posts = new_highest_post_id_ff - old_highest_post_id_ff
-            logging.debug('Archive has {0!r} new posts since last check'.format(number_of_new_ff_posts))
-            assert(number_of_new_ff_posts >= 0)# This should only ever be positive, since postIDs only increase.
+            # Pause for a short time between cycles
+            logging.debug('Pausing between cycles for {0!r}'.format(RECHECK_DELAY))
+            time.sleep(RECHECK_DELAY)
 
-            if (number_of_new_ff_posts == 0):
-                # Archive has not gained posts since last check
-                logging.info('Archive has gained no new posts since last recheck.')
+            # Check if we should declare the site down
+            logging.debug('consecutive_failures = {0!r}, THRESHOLD_CYCLES = {1!r}'.format(consecutive_failures, THRESHOLD_CYCLES))
+            if (consecutive_failures > THRESHOLD_CYCLES):
+                # The site is down.
+                logging.critical('Number of consecutive failures exceeded threshold! Running command.')
+                run_command()
+                # There is no need for this script to be running anymore.
+                # Failover to new server configureation has taken place and it is inappropriate to run the command again.
+                logging.info('Further checking inappropriate, exiting polling loop.')
+                return# This is the only correct place for this function to return.
 
-                # Poll 4chan to see if it has updated
-                # Check the highest ID on 4chan
-                api_response_4ch = fetch(requests_session, url=API_URL_4CH, expect_status=200)
-                api_data_4ch = json.loads(api_response_4ch.content)
-                new_highest_post_id_4ch = find_highest_post_num_4ch(api_data_4ch)
-                logging.debug('new_highest_post_id_4ch = {0!r}'.format(new_highest_post_id_4ch))
+            # Check the highest ID on the archive
+            api_response_ff = fetch(url=API_URL_FF, expect_status=200)
+            if (api_response_ff is None):
+                # Count failure to load API as a failure of the archive
+                logging.info('Failed to retrieve FF API JSON. Incrementing failure counter.')
+                consecutive_failures += 1# Increment failure counter
+                continue
+            api_data_ff = json.loads(api_response_ff.content)
+            new_highest_post_id_ff = find_highest_post_num_ff(api_data_ff)
+            logging.debug('new_highest_post_id_ff = {0!r}'.format(new_highest_post_id_ff))
 
-                if (old_highest_post_id_4ch is not None):
-                    # If we have a value to compare against for 4chan
-                    number_of_new_4ch_posts = new_highest_post_id_4ch - old_highest_post_id_4ch
-                    logging.debug('4ch has {0!r} new posts since last check'.format(number_of_new_4ch_posts))
-                    assert(number_of_new_4ch_posts >= 0)# This should only ever be positive, since postIDs only increase.
-
-                    if (number_of_new_4ch_posts == 0):
-                        # If 4chan has no new posts
-                        logging.info('4chan has gained no new posts since last check, resetting failure counter.')
-                        consecutive_failures = 0# Reset failure counter
-                    else:
-                        # If 4chan has gained posts but the archive has not gained posts
-                        logging.info('Error detected: Archive has no new posts but 4ch does. Incrementing failure counter')
-                        consecutive_failures += 1# Increment failure counter
-
-                else:
-                    # We have not checked 4chan before
-                    logging.info('This is the first check of 4chan, cannot perform comparison this cycle.')
-
+            if (old_highest_post_id_ff is None):
+                # We have not checked the archive before
+                logging.info('This is the first check of the archive, cannot perform comparison this cycle.')
+                continue
             else:
-                # Archive has gained posts since last check
-                logging.info('Archive has gained posts since last check, resetting failure counter.')
-                consecutive_failures = 0# Reset failure counter
+                # Only perform check if we have a previous value to compare against
+                number_of_new_ff_posts = new_highest_post_id_ff - old_highest_post_id_ff
+                logging.debug('Archive has {0!r} new posts since last check.'.format(number_of_new_ff_posts))
+                assert(number_of_new_ff_posts >= 0)# This should only ever be positive, since postIDs only increase.
 
-        else:
-            # We have not checked the archive before
-            logging.info('This is the first check of the archive, cannot perform comparison this cycle.')
+                if (number_of_new_ff_posts == 0):
+                    # Archive has not gained posts since last check
+                    logging.info('Archive has gained no new posts since last recheck.')
 
-        # Check if we should declare the site down
-        logging.debug('consecutive_failures = {0!r}, THRESHOLD_CYCLES = {1!r}'.format(consecutive_failures, THRESHOLD_CYCLES))
-        if (consecutive_failures > THRESHOLD_CYCLES):
-            # The site is down.
-            logging.critical('Number of consecutive failures exceeded threshold! Running command.')
-            run_command()
-            # There is no need for this script to be running anymore.
-            # Failover to new server configureation has taken place and it is inappropriate to run the command again.
-            logging.critical('Further checking inappropriate, exiting polling loop.')
-            return# This is the only correct place for this function to return.
+                    # Poll 4chan to see if it has updated
+                    # Check the highest ID on 4chan
+                    api_response_4ch = fetch(url=API_URL_4CH, expect_status=200)
+                    if (api_response_ff is None):
+                        # Permit failure of 4ch, since we do not control it.
+                        logging.warning('Failed to retrieve 4ch API JSON.')
+                        continue
+                    api_data_4ch = json.loads(api_response_4ch.content)
+                    new_highest_post_id_4ch = find_highest_post_num_4ch(api_data_4ch)
+                    logging.debug('new_highest_post_id_4ch = {0!r}'.format(new_highest_post_id_4ch))
 
-        # Store current high IDs for next cycle's comparisons
-        old_highest_post_id_ff = new_highest_post_id_ff
-        old_highest_post_id_4ch = new_highest_post_id_4ch
+                    if (old_highest_post_id_4ch is None):
+                        # We have not checked 4chan before
+                        logging.info('This is the first check of 4chan, cannot perform comparison this cycle.')
+                        continue
+                    else:
+                        # If we have a value to compare against for 4chan
+                        number_of_new_4ch_posts = new_highest_post_id_4ch - old_highest_post_id_4ch
+                        logging.debug('4ch has {0!r} new posts since last check.'.format(number_of_new_4ch_posts))
+                        assert(number_of_new_4ch_posts >= 0)# This should only ever be positive, since postIDs only increase.
 
-        # Pause for a short time between cycles
-        logging.debug('Pausing between cycles for {0!r}'.format(RECHECK_DELAY))
-        time.sleep(RECHECK_DELAY)
+                        if (number_of_new_4ch_posts == 0):
+                            # If 4chan has no new posts
+                            # Do not change counter if archive and 4chan both have no new posts
+                            logging.info('Neither archive or 4chan have gained new posts since last check, doing nothing.')
+                            continue
+                        else:
+                            # If 4chan has gained posts but the archive has not gained posts
+                            logging.info('Error detected: Archive has no new posts but 4ch does. Incrementing failure counter.')
+                            consecutive_failures += 1# Increment failure counter
+                else:
+                    # Archive has gained posts since last check
+                    logging.info('Archive has gained posts since last check, resetting failure counter.')
+                    consecutive_failures = 0# Reset failure counter
+
+        except Exception, err:# Catch any exception that happens
+            logging.exception(err)# Record exception
+            if type(err) is KeyboardInterrupt:# Permit ctrl-c KeyboardInterrupt to kill script
+                raise
+            logging.error('Exception occured, incrementing failure counter.')
+            consecutive_failures += 1# Increment failure counter
         continue
     # ===== End of loop =====
     logging.error('Execution should never reach this point.')
-    assert(False)# Execution should never reach here.
     raise FailoverException()# Execution should never reach here.
 
 
