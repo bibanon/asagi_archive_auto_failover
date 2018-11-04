@@ -132,14 +132,61 @@ class YAMLConfigEmail():
 
 
 
+def get_current_unix_time_int():
+    """Return the current UTC+0 unix time as an int"""
+    # Get current time at UTC+0
+    # Convert to time tuple
+    # Convert time tuple to float seconds since epoch
+    # Convert float to int
+    current_unix_time_int = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+    return current_unix_time_int
 
 
+def format_message(message):
+    assert(type(message) in [str, unicode])
+    if '{unixtime}' in message:
+        message = message_out.replace(unixtime=get_current_unix_time_int())
+    return message
 
 
+def send_mail(configuration, body_override=None):
+    # Try sending an email
+    logging.info("Sending email to {0!r}".format(configuration.recipient_address))
 
+    logging.debug('configuration.recipient_address = {0!r}'.format(configuration.recipient_address))
+    logging.debug('configuration.subject = {0!r}'.format(configuration.subject))
+    logging.debug('configuration.body_text = {0!r}'.format(configuration.body_text))
+    logging.debug('body_override = {0!r}'.format(body_override))
 
+    # Validate values for email
+    # credentials
+    assert(type(configuration.sender_username) in [str, unicode])
+    assert(type(configuration.sender_password) in [str, unicode])
+    # message
+    assert(type(configuration.recipient_address) in [str, unicode])
+    assert(type(subject) in [str, unicode])
+    assert(type(configuration.body_text) in [str, unicode])
 
+    if body_override:
+        logging.debug('body_override set, using its value instead.')
+        assert(type(body_override) in [str, unicode])
+        body_text = body_override
+    else:
+        body_text = configuration.body_text
 
+    print(body_text)
+    formatted_body_text = format_message(message)
+    logging.debug('formatted_body_text = {0!r}'.format(formatted_body_text))
+
+    # Actually send the message
+    yag = yagmail.SMTP(configuration.sender_username, configuration.sender_password)
+    yag.send(
+        to=configuration.recipient_address,
+        subject=subject,
+        contents=formatted_body_text
+    )
+    logging.info("Sent email to {0!r}".format(configuration.recipient_address))
+    return
 
 
 
@@ -147,7 +194,11 @@ class YAMLConfigEmail():
 
 
 def main():
-    pass
+    # Load config so we don't put email credentials on gihub
+    configuration = YAMLConfigEmail(config_path='email_config.yaml')
+    send_mail(configuration)
+    return
+
 
 if __name__ == '__main__':
     setup_logging(os.path.join("debug", "send_email.log.txt"))# Setup logging
@@ -158,32 +209,3 @@ if __name__ == '__main__':
         logging.critical("Unhandled exception!")
         logging.exception(e)
     logging.info("Program finished.")
-
-
-
-
-
-
-
-
-
-# Load config so we don't put email credentials on gihub
-configuration = YAMLConfigEmail(config_path='email_config.yaml')
-
-# Try sending an email
-
-logging.info("Sending email.")
-yag = yagmail.SMTP(configuration.sender_username, configuration.sender_password)
-yag.send(
-    to=configuration.recipient_address,
-    subject=configuration.subject,
-    contents=configuration.body_text
-)
-logging.info("Sent email.")
-
-
-
-
-
-
-
