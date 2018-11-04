@@ -22,7 +22,7 @@ import requests
 import requests.exceptions
 # local
 from common import *
-
+import send_email
 
 
 # ===== Configuration =====
@@ -128,6 +128,29 @@ def run_command():
     return
 
 
+def on_failure():
+    """
+    Function that is triggered on archival failure.
+    All actions to be taken if the archive goes down should be triggered in this function.
+    """
+    try:
+        logging.info('Attempting to send email')
+        send_mail_gmail(
+            sender_username=gmail_config.sender_username,
+            sender_password=gmail_config.sender_password,
+            recipient_address=gmail_config.recipient_address,
+            subject=gmail_config.subject,
+            body_template=gmail_config.body_template
+        )
+    except Exception, err:
+        # If failure is detected, we want both responses to run
+        logging.exception(err)
+        pass
+    logging.info('Attempting to run command')
+    run_command()
+    return
+
+
 def find_highest_post_num_4ch(api_data):
     """Find the highest post number for 4chan API
     ex. http://a.4cdn.org/adv/1.json"""
@@ -218,7 +241,7 @@ def check_archive_loop():
             if (consecutive_failures > THRESHOLD_CYCLES):
                 # The site is down.
                 logging.critical('Number of consecutive failures exceeded threshold! Running command.')
-                run_command()
+                on_failure()
                 # There is no need for this script to be running anymore.
                 # Failover to new server configureation has taken place and it is inappropriate to run the command again.
                 logging.info('Further checking inappropriate, exiting polling loop.')
@@ -305,6 +328,8 @@ def main():
 if __name__ == '__main__':
     setup_logging(os.path.join("debug", "auto_failover.log.txt"))# Setup logging
     try:
+        # Load configurations here to make them global
+        gmail_config = send_email.YAMLConfigGmail(config_path='gmail_config.yaml')
         main()
     # Log exceptions
     except Exception, e:

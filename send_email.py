@@ -20,7 +20,7 @@ from common import *
 
 
 
-class YAMLConfigEmail():
+class YAMLConfigGmail():
     """Handle reading, writing, and creating YAML config files.
     For step1_dump_img_table.py"""
     # This is what we expect the YAML file to contain
@@ -155,9 +155,9 @@ def format_message(message):
     return new_message
 
 
-def send_mail(sender_username, sender_password, recipient_address, subject, body_template):
+def send_mail_gmail(sender_username, sender_password, recipient_address, subject, body_template):
     # Try sending an email
-    logging.info("Sending email to {0!r}".format(recipient_address))
+    logging.info("Sending email from gmail to {0!r}".format(recipient_address))
 
     # Validate values for email
     # credentials
@@ -178,23 +178,54 @@ def send_mail(sender_username, sender_password, recipient_address, subject, body
         subject=subject,
         contents=body_text
     )
-    logging.info("Sent email to {0!r}".format(recipient_address))
+    logging.info("Sent email from gmail to {0!r}".format(recipient_address))
     return
 
 
 
+def test_yaml_newline_escaping():
+    """To figure out how to encode newlines in YAML config files"""
+    config_path = os.path.join('test.yaml')
+    config_data = {
+    'variable_a': 'value 1 \n still value 1',
+    'variable_b': 2,
+    'variable_c': None,
+    'variable_d': 'line1 \n line2',
+    'variable_e': '',
+    }
+    if os.path.exists(config_path):
+        # Read the config from file.
+        logging.debug('Reading config from config_path = {0!r}'.format(config_path))
+        with open(config_path, 'rb') as load_f:
+            config_data = yaml.safe_load(load_f)
+        # Store values to class instance.
+        logging.debug('Loading config data config_data = {0!r}'.format(config_data))
 
+    logging.debug('Saving config_data = {0!r}'.format(config_data))
+    # Write data to file.
+    with open(config_path, 'wb') as save_f:
+        yaml.dump(
+            data=config_data,
+            stream=save_f,
+            explicit_start=True,# Begin with '---'
+            explicit_end=True,# End with '...'
+            default_flow_style=False# Output as multiple lines
+        )
+    logging.info('config_data = {0!r}'.format(config_data))
+    print(config_data['variable_a'])
+    return
 
 
 def main():
+##    test_yaml_newline_escaping()
     # Load config so we don't put email credentials on gihub
-    configuration = YAMLConfigEmail(config_path='email_config.yaml')
-    send_mail(
-        sender_username=configuration.sender_username,
-        sender_password=configuration.sender_password,
-        recipient_address=configuration.recipient_address,
-        subject=configuration.subject,
-        body_template=configuration.body_template
+    gmail_config = YAMLConfigGmail(config_path='gmail_config.yaml')
+    send_mail_gmail(
+        sender_username=gmail_config.sender_username,
+        sender_password=gmail_config.sender_password,
+        recipient_address=gmail_config.recipient_address,
+        subject=gmail_config.subject,
+        body_template=gmail_config.body_template
     )
     return
 
