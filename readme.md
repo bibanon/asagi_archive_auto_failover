@@ -6,7 +6,7 @@
 TODO: Write this section
 
 ## Set command to run on archive failure
-TODO: Write this section
+edit COMMAND_ON_FAILURE at the top of auto_failover.py to your desired command\(s\)
 
 ### Set email options
 #### Gmail
@@ -17,10 +17,11 @@ Email configuration for Gmail is set through gmail_config.yaml
 - sender_password: Gmail password of sending account
 - recipient_address: Email address to send an email to
 - body_template: The body of the email to send
-Available formatting codes:
-```
-{unixtime} The current unix-style time (time-since-epoch in seconds)
-```
+> Available formatting codes:
+>```
+>{unixtime} The current unix-style time (time-since-epoch in seconds)
+>```
+
 #### SMTP
 Not yet implimented.
 
@@ -30,7 +31,7 @@ To run the failure detection script:
 TODO: Figure out how to run automatically
 
 ## Config file hints
-use the `|` character to permit multi-line values in YAML
+Use the `|` character to permit multi-line values in YAML.
 Example:
 ```
 body_template: |
@@ -40,6 +41,16 @@ body_template: |
     This text was produced using the body_template config value.
     -Me
 ```
+
+Use `|-` or `>-` on multiline values to avoid trailing newlines.
+body_template: |-
+    Hey this is a test of the email script.
+    This should be the second line.
+    This message was sent at {unixtime}
+    This text was produced using the body_template config value.
+    -Me
+```
+
 
 ## Installation
 Requires python 2.x
