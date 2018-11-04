@@ -29,19 +29,17 @@ import requests.exceptions
 # Values in capitals are globals/defined at module level scope.
 
 # Command to execute if failure is detected
-COMMAND_ON_FAILURE = """echo "test string" """
+COMMAND_ON_FAILURE = """type nul >triggered.txt"""# Just record that command triggered for testing.
 
 # URL to foolfuuka archive API to test for new posts
-API_URL_FF = 'http://archive.4plebs.org/_/api/chan/index/?board=adv&page=1'
+API_URL_FF = 'http://desuarchive.org/_/api/chan/index/?board=co&page=1'
 
 # URL to 4chan API to test for new posts
-API_URL_4CH = 'http://a.4cdn.org/adv/1.json'# Avoid https per 4ch API docs
+API_URL_4CH = 'http://a.4cdn.org/co/1.json'# Avoid https per 4ch API docs
 
 # Delay in seconds between update check cycles
+# This will need to be set based on the archive's update rate.
 RECHECK_DELAY = 120# Seconds
-
-# UNUSED
-#THRESHOLD_TIME = 120# Seconds
 
 # Number of consecutive failures to increase maximum postnumber before declaring a failure.
 THRESHOLD_CYCLES = 10
@@ -60,14 +58,13 @@ CUSTOM_DELAY = 0.1# This will use a delay of 0.1 second
 
 
 
-
 class FailoverException(Exception):
     """Local subclass for all custom exceptions within auto_failover.py"""
 
 
 
-class FetchTooManyRetries(FailoverException):
-    pass
+##class FetchTooManyRetries(FailoverException):
+##    pass
 
 
 
