@@ -10,6 +10,8 @@
 #-------------------------------------------------------------------------------
 # StdLib
 import logging.handlers
+import time
+import os
 # Remote libraries
 import yagmail
 import yaml
@@ -27,7 +29,7 @@ class YAMLConfigEmail():
         'sender_password': '',
         'recipient_address': '',
         'subject': '',
-        'body_text': ''
+        'body_template': ''
     }
     # Create empty vars
     config_path = None
@@ -35,7 +37,7 @@ class YAMLConfigEmail():
     sender_password = ''
     recipient_address = ''
     subject = ''
-    body_text = ''
+    body_template = ''
 
     def __init__(self, config_path):
         # Store argument value to class instance.
@@ -69,7 +71,7 @@ class YAMLConfigEmail():
         self.sender_password = config_data_in['sender_password']
         self.recipient_address = config_data_in['recipient_address']
         self.subject = config_data_in['subject']
-        self.body_text = config_data_in['body_text']
+        self.body_template = config_data_in['body_template']
         return
 
     def save(self):
@@ -81,7 +83,7 @@ class YAMLConfigEmail():
             'sender_password': self.sender_password,
             'recipient_address': self.recipient_address,
             'subject': self.subject,
-            'body_text': self.body_text,
+            'body_template': self.body_template,
         }
         logging.debug('Saving config_data_out = {0!r}'.format(config_data_out))
         # Write data to file.
@@ -124,9 +126,9 @@ class YAMLConfigEmail():
         # self.subject
         assert(type(self.subject) in [str, unicode])
         assert(len(self.subject) != 0)
-        # self.body_text
-        assert(type(self.body_text) in [str, unicode])
-        assert(len(self.body_text) != 0)
+        # self.body_template
+        assert(type(self.body_template) in [str, unicode])
+        assert(len(self.body_template) != 0)
         return
 
 
@@ -143,49 +145,40 @@ def get_current_unix_time_int():
 
 
 def format_message(message):
+    logging.debug('message = {0!r}'.format(message))
     assert(type(message) in [str, unicode])
+    new_message = message
     if '{unixtime}' in message:
-        message = message_out.replace(unixtime=get_current_unix_time_int())
-    return message
+        time_value = get_current_unix_time_int()
+        new_message = new_message.format(unixtime=time_value)
+    logging.debug('new_message = {0!r}'.format(new_message))
+    return new_message
 
 
-def send_mail(configuration, body_override=None):
+def send_mail(sender_username, sender_password, recipient_address, subject, body_template):
     # Try sending an email
-    logging.info("Sending email to {0!r}".format(configuration.recipient_address))
-
-    logging.debug('configuration.recipient_address = {0!r}'.format(configuration.recipient_address))
-    logging.debug('configuration.subject = {0!r}'.format(configuration.subject))
-    logging.debug('configuration.body_text = {0!r}'.format(configuration.body_text))
-    logging.debug('body_override = {0!r}'.format(body_override))
+    logging.info("Sending email to {0!r}".format(recipient_address))
 
     # Validate values for email
     # credentials
-    assert(type(configuration.sender_username) in [str, unicode])
-    assert(type(configuration.sender_password) in [str, unicode])
+    assert(type(sender_username) in [str, unicode])
+    assert(type(sender_password) in [str, unicode])
     # message
-    assert(type(configuration.recipient_address) in [str, unicode])
+    assert(type(recipient_address) in [str, unicode])
     assert(type(subject) in [str, unicode])
-    assert(type(configuration.body_text) in [str, unicode])
-
-    if body_override:
-        logging.debug('body_override set, using its value instead.')
-        assert(type(body_override) in [str, unicode])
-        body_text = body_override
-    else:
-        body_text = configuration.body_text
-
-    print(body_text)
-    formatted_body_text = format_message(message)
-    logging.debug('formatted_body_text = {0!r}'.format(formatted_body_text))
+    assert(type(body_template) in [str, unicode])
+    # Format message
+    body_text = format_message(message=body_template)
+    logging.debug('body_text = {0!r}'.format(body_text))
 
     # Actually send the message
-    yag = yagmail.SMTP(configuration.sender_username, configuration.sender_password)
+    yag = yagmail.SMTP(sender_username, sender_password)
     yag.send(
-        to=configuration.recipient_address,
+        to=recipient_address,
         subject=subject,
-        contents=formatted_body_text
+        contents=body_text
     )
-    logging.info("Sent email to {0!r}".format(configuration.recipient_address))
+    logging.info("Sent email to {0!r}".format(recipient_address))
     return
 
 
@@ -196,12 +189,18 @@ def send_mail(configuration, body_override=None):
 def main():
     # Load config so we don't put email credentials on gihub
     configuration = YAMLConfigEmail(config_path='email_config.yaml')
-    send_mail(configuration)
+    send_mail(
+        sender_username=configuration.sender_username,
+        sender_password=configuration.sender_password,
+        recipient_address=configuration.recipient_address,
+        subject=configuration.subject,
+        body_template=configuration.body_template
+    )
     return
 
 
 if __name__ == '__main__':
-    setup_logging(os.path.join("debug", "send_email.log.txt"))# Setup logging
+    setup_logging(os.path.join("debug", "send_email.log.txt"), console_level=logging.DEBUG)# Setup logging
     try:
         main()
     # Log exceptions

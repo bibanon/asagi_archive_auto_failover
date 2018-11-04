@@ -20,7 +20,7 @@ import datetime
 
 
 # logging setup
-def setup_logging(log_file_path, timestamp_filename=True, max_log_size=104857600):
+def setup_logging(log_file_path, timestamp_filename=True, max_log_size=104857600,console_level=logging.DEBUG):
     """Setup logging (Before running any other code)
     http://inventwithpython.com/blog/2012/04/06/stop-using-print-for-debugging-a-5-minute-quickstart-guide-to-pythons-logging-module/
     """
@@ -63,7 +63,7 @@ def setup_logging(log_file_path, timestamp_filename=True, max_log_size=104857600
 
     # Console output
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)# Only show the really important stuff in the console
+    ch.setLevel(console_level)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
