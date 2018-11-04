@@ -4,3 +4,4 @@ git_ignored/
 data/
 *.pyc
 *config.py
+*.yaml
