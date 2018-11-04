@@ -43,6 +43,7 @@ body_template: |
 ```
 
 Use `|-` or `>-` on multiline values to avoid trailing newlines.
+```
 body_template: |-
     Hey this is a test of the email script.
     This should be the second line.
