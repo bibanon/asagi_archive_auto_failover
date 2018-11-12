@@ -25,73 +25,43 @@ from common import *
 class YAMLConfigGmail():
     """Handle reading, writing, and creating YAML config files.
     For Gmail"""
-    # This is what we expect the YAML file to contain
-    confg_template = {
-        'sender_username': '',
-        'sender_password': '',
-        'recipient_address': '',
-        'subject': '',
-        'body_template': ''
-    }
-    # Create empty vars
-    config_path = None
-    sender_username = ''
-    sender_password = ''
-    recipient_address = ''
-    subject = ''
-    body_template = ''
+    def __init__(self, config_path=None):
+        # Set default values
+        self.sender_username = ''
+        self.sender_password = ''
+        self.recipient_address = ''
+        self.subject = ''
+        self.body_template = ''
 
-    def __init__(self, config_path):
-        # Store argument value to class instance.
-        self.config_path = config_path
-        logging.debug('self.config_path = {0!r}'.format(self.config_path))
-        # Ensure config dir exists.
-        config_dir = os.path.dirname(config_path)
-        if len(config_dir) > 0:# Only try to make a dir if ther is a dir to make.
-            if not os.path.exists(config_dir):
-                os.makedirs(config_dir)
-        # Load/create config file
-        if os.path.exists(self.config_path):
-            # Load config file if it exists.
-            self.load()
-        else:
-            # Create an example config file if no file exists.
-            self.save()
-        # Ensure config looks valid.
-        self.validate()
+        if config_path:
+            # Ensure config dir exists.
+            config_dir = os.path.dirname(config_path)
+            if len(config_dir) > 0:# Only try to make a dir if ther is a dir to make.
+                if not os.path.exists(config_dir):
+                    os.makedirs(config_dir)
+            # Load/create config file
+            if os.path.exists(config_path):
+                self.load(config_path)# Load config file if it exists.
+            else:
+                self.save(config_path, self.__class__())# Create an example config file if no file exists.
         return
 
-    def load(self):
+    def load(self, config_path):
         """Load configuration from YAML file."""
-        # Read the config from file.
-        logging.debug('Reading config from self.config_path = {0!r}'.format(self.config_path))
-        with open(self.config_path, 'rb') as load_f:
-            config_data_in = yaml.safe_load(load_f)
+        logging.debug('Reading from config_path={0!r}'.format(config_path))
+        with open(config_path, 'rb') as load_f:# Read the config from file.
+            config = yaml.safe_load(load_f)
         # Store values to class instance.
-        logging.debug('Loading config data config_data_in = {0!r}'.format(config_data_in))
-        self.sender_username = config_data_in['sender_username']
-        self.sender_password = config_data_in['sender_password']
-        self.recipient_address = config_data_in['recipient_address']
-        self.subject = config_data_in['subject']
-        self.body_template = config_data_in['body_template']
+        for key in config.keys():
+            setattr(self, key, config[key])
         return
 
-    def save(self):
+    def save(self, config_path, instance):
         """Save current configuration to YAML file."""
-        logging.debug('Saving current configuration to self.config_path = {0!r}'.format(self.config_path))
-        # Collect data together.
-        config_data_out = {
-            'sender_username': self.sender_username,
-            'sender_password': self.sender_password,
-            'recipient_address': self.recipient_address,
-            'subject': self.subject,
-            'body_template': self.body_template,
-        }
-        logging.debug('Saving config_data_out = {0!r}'.format(config_data_out))
-        # Write data to file.
-        with open(self.config_path, 'wb') as save_f:
+        logging.debug('Saving to config_path = {0!r}'.format(config_path))
+        with open(config_path, 'wb') as save_f:# Write data to file.
             yaml.dump(
-                data=config_data_out,
+                data=vars(instance),
                 stream=save_f,
                 explicit_start=True,# Begin with '---'
                 explicit_end=True,# End with '...'
@@ -99,169 +69,56 @@ class YAMLConfigGmail():
             )
         return
 
-    def create(self):
-        """Create a new blank YAML file."""
-        # Write a generic example config file.
-        logging.debug('Creating example config file at self.config_path = {0!r}'.format(self.config_path))
-        with open(self.config_path, 'wb') as create_f:
-            yaml.dump(
-                data=confg_template,
-                stream=create_f,
-                explicit_start=True,# Begin with '---'
-                explicit_end=True,# End with '...'
-                default_flow_style=False# Output as multiple lines
-            )
-        return
 
-    def validate(self):
-        """Validate current configuration values and crash if any value is invalid."""
-        # self.sender_username
-        assert(type(self.sender_username) in [str, unicode])
-        assert(len(self.sender_username) != 0)
-        # self.sender_password
-        assert(type(self.sender_password) in [str, unicode])
-        assert(len(self.sender_password) != 0)
-        # self.recipient_address
-        assert(type(self.recipient_address) in [str, unicode])
-        assert(len(self.recipient_address) != 0)
-        assert('@' in self.recipient_address)
-        # self.subject
-        assert(type(self.subject) in [str, unicode])
-        assert(len(self.subject) != 0)
-        # self.body_template
-        assert(type(self.body_template) in [str, unicode])
-        assert(len(self.body_template) != 0)
-        return
 
 class YAMLConfigSMTP():
     """Handle reading, writing, and creating YAML config files.
     For SMTP"""
-    # This is what we expect the YAML file to contain
-    confg_template = {
-        'smtp_server_address': '',
-        'smtp_server_port': '',
-        'sender_email_address': '',
-        'sender_username': '',
-        'sender_password': '',
-        'recipient_address': '',
-        'subject': '',
-        'body_template': ''
-    }
-    # Create empty vars
-    config_path = None
-    smtp_server_address = ''
-    smtp_server_port = ''
-    sender_email_address = ''
-    sender_username = ''
-    sender_password = ''
-    recipient_address = ''
-    subject = ''
-    body_template = ''
+    def __init__(self, config_path=None):
+        # Set default values
+        self.smtp_server_address = ''
+        self.smtp_server_port = ''
+        self.sender_email_address = ''
+        self.sender_username = ''
+        self.sender_password = ''
+        self.recipient_address = ''
+        self.subject = ''
+        self.body_template = ''
 
-    def __init__(self, config_path):
-        # Store argument value to class instance.
-        self.config_path = config_path
-        logging.debug('self.config_path = {0!r}'.format(self.config_path))
-        # Ensure config dir exists.
-        config_dir = os.path.dirname(config_path)
-        if len(config_dir) > 0:# Only try to make a dir if ther is a dir to make.
-            if not os.path.exists(config_dir):
-                os.makedirs(config_dir)
-        # Load/create config file
-        if os.path.exists(self.config_path):
-            # Load config file if it exists.
-            self.load()
-        else:
-            # Create an example config file if no file exists.
-            self.save()
-        # Ensure config looks valid.
-        self.validate()
+        if config_path:
+            # Ensure config dir exists.
+            config_dir = os.path.dirname(config_path)
+            if len(config_dir) > 0:# Only try to make a dir if ther is a dir to make.
+                if not os.path.exists(config_dir):
+                    os.makedirs(config_dir)
+            # Load/create config file
+            if os.path.exists(config_path):
+                self.load(config_path)# Load config file if it exists.
+            else:
+                self.save(config_path, self.__class__())# Create an example config file if no file exists.
         return
 
-    def load(self):
+    def load(self, config_path):
         """Load configuration from YAML file."""
-        # Read the config from file.
-        logging.debug('Reading config from self.config_path = {0!r}'.format(self.config_path))
-        with open(self.config_path, 'rb') as load_f:
-            config_data_in = yaml.safe_load(load_f)
+        logging.debug('Reading from config_path={0!r}'.format(config_path))
+        with open(config_path, 'rb') as load_f:# Read the config from file.
+            config = yaml.safe_load(load_f)
         # Store values to class instance.
-        logging.debug('Loading config data config_data_in = {0!r}'.format(config_data_in))
-        self.smtp_server_address = config_data_in['smtp_server_address']
-        self.smtp_server_port = config_data_in['smtp_server_port']
-        self.sender_email_address = config_data_in['sender_email_address']
-        self.sender_username = config_data_in['sender_username']
-        self.sender_password = config_data_in['sender_password']
-        self.recipient_address = config_data_in['recipient_address']
-        self.subject = config_data_in['subject']
-        self.body_template = config_data_in['body_template']
+        for key in config.keys():
+            setattr(self, key, config[key])
         return
 
-    def save(self):
+    def save(self, config_path, instance):
         """Save current configuration to YAML file."""
-        logging.debug('Saving current configuration to self.config_path = {0!r}'.format(self.config_path))
-        # Collect data together.
-        config_data_out = {
-            'smtp_server_address': self.smtp_server_address,
-            'smtp_server_port': self.smtp_server_port,
-            'sender_email_address': self.sender_email_address,
-            'sender_username': self.sender_username,
-            'sender_password': self.sender_password,
-            'recipient_address': self.recipient_address,
-            'subject': self.subject,
-            'body_template': self.body_template,
-        }
-        logging.debug('Saving config_data_out = {0!r}'.format(config_data_out))
-        # Write data to file.
-        with open(self.config_path, 'wb') as save_f:
+        logging.debug('Saving to config_path = {0!r}'.format(config_path))
+        with open(config_path, 'wb') as save_f:# Write data to file.
             yaml.dump(
-                data=config_data_out,
+                data=vars(instance),
                 stream=save_f,
                 explicit_start=True,# Begin with '---'
                 explicit_end=True,# End with '...'
                 default_flow_style=False# Output as multiple lines
             )
-        return
-
-    def create(self):
-        """Create a new blank YAML file."""
-        # Write a generic example config file.
-        logging.debug('Creating example config file at self.config_path = {0!r}'.format(self.config_path))
-        with open(self.config_path, 'wb') as create_f:
-            yaml.dump(
-                data=confg_template,
-                stream=create_f,
-                explicit_start=True,# Begin with '---'
-                explicit_end=True,# End with '...'
-                default_flow_style=False# Output as multiple lines
-            )
-        return
-
-    def validate(self):
-        """Validate current configuration values and crash if any value is invalid."""
-        # self.smtp_server_address
-        assert(type(self.smtp_server_address) in [str, unicode])
-        assert(len(self.smtp_server_address) != 0)
-        # self.smtp_server_port
-        assert(type(self.smtp_server_port) in [int])
-        # self.sender_email_address
-        assert(type(self.sender_email_address) in [str, unicode])
-        assert(len(self.sender_email_address) != 0)
-        # self.sender_username
-        assert(type(self.sender_username) in [str, unicode])
-        assert(len(self.sender_username) != 0)
-        # self.sender_password
-        assert(type(self.sender_password) in [str, unicode])
-        assert(len(self.sender_password) != 0)
-        # self.recipient_address
-        assert(type(self.recipient_address) in [str, unicode])
-        assert(len(self.recipient_address) != 0)
-        assert('@' in self.recipient_address)
-        # self.subject
-        assert(type(self.subject) in [str, unicode])
-        assert(len(self.subject) != 0)
-        # self.body_template
-        assert(type(self.body_template) in [str, unicode])
-        assert(len(self.body_template) != 0)
         return
 
 
@@ -363,55 +220,22 @@ def send_mail_smtp(
     return
 
 
-
-
-def test_yaml_newline_escaping():
-    """To figure out how to encode newlines in YAML config files"""
-    config_path = os.path.join('test.yaml')
-    config_data = {
-    'variable_a': 'value 1 \n still value 1',
-    'variable_b': 2,
-    'variable_c': None,
-    'variable_d': 'line1 \n line2',
-    'variable_e': '',
-    }
-    if os.path.exists(config_path):
-        # Read the config from file.
-        logging.debug('Reading config from config_path = {0!r}'.format(config_path))
-        with open(config_path, 'rb') as load_f:
-            config_data = yaml.safe_load(load_f)
-        # Store values to class instance.
-        logging.debug('Loading config data config_data = {0!r}'.format(config_data))
-
-    logging.debug('Saving config_data = {0!r}'.format(config_data))
-    # Write data to file.
-    with open(config_path, 'wb') as save_f:
-        yaml.dump(
-            data=config_data,
-            stream=save_f,
-            explicit_start=True,# Begin with '---'
-            explicit_end=True,# End with '...'
-            default_flow_style=False# Output as multiple lines
-        )
-    logging.info('config_data = {0!r}'.format(config_data))
-    print(config_data['variable_a'])
-    return
-
-
 def main():
+##    new_config_Class_test = YAMLConfigGmailSmall('test_config.yaml')
+##    return
     # SMTP
     logging.info('Testing SMTP')
     smtp_config = YAMLConfigSMTP(config_path='smtp_config.yaml')
-    send_mail_smtp(
-        smtp_server_address=smtp_config.smtp_server_address,
-        smtp_server_port=smtp_config.smtp_server_port,
-        sender_email_address=smtp_config.sender_email_address,
-        sender_username=smtp_config.sender_username,
-        sender_password=smtp_config.sender_password,
-        recipient_address=smtp_config.recipient_address,
-        subject=smtp_config.subject,
-        body_template=smtp_config.body_template
-    )
+##    send_mail_smtp(
+##        smtp_server_address=smtp_config.smtp_server_address,
+##        smtp_server_port=smtp_config.smtp_server_port,
+##        sender_email_address=smtp_config.sender_email_address,
+##        sender_username=smtp_config.sender_username,
+##        sender_password=smtp_config.sender_password,
+##        recipient_address=smtp_config.recipient_address,
+##        subject=smtp_config.subject,
+##        body_template=smtp_config.body_template
+##    )
     # Gmail
     logging.info('Testing Gmail')
     gmail_config = YAMLConfigGmail(config_path='gmail_config.yaml')
