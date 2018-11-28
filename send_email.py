@@ -22,7 +22,7 @@ from common import *
 
 
 
-class YAMLConfigGmail():
+class YAMLConfigYagmailEmail():
     """Handle reading, writing, and creating YAML config files.
     For Gmail"""
     def __init__(self, config_path=None):
@@ -53,7 +53,8 @@ class YAMLConfigGmail():
             config = yaml.safe_load(load_f)
         # Store values to class instance.
         for key in config.keys():
-            setattr(self, key, config[key])
+            setattr(self, key, config[key])# Sets self.key to config[key]
+        logging.debug('Loaded config values: {0!r}'.format(config))
         return
 
     def save(self, config_path, instance):
@@ -71,13 +72,13 @@ class YAMLConfigGmail():
 
 
 
-class YAMLConfigSMTP():
+class YAMLConfigSmtplibEmail():
     """Handle reading, writing, and creating YAML config files.
     For SMTP"""
     def __init__(self, config_path=None):
         # Set default values
         self.smtp_server_address = ''
-        self.smtp_server_port = ''
+        self.smtp_server_port = 465
         self.sender_email_address = ''
         self.sender_username = ''
         self.sender_password = ''
@@ -105,7 +106,60 @@ class YAMLConfigSMTP():
             config = yaml.safe_load(load_f)
         # Store values to class instance.
         for key in config.keys():
-            setattr(self, key, config[key])
+            setattr(self, key, config[key])# Sets self.key to config[key]
+        logging.debug('Loaded config values: {0!r}'.format(config))
+        return
+
+    def save(self, config_path, instance):
+        """Save current configuration to YAML file."""
+        logging.debug('Saving to config_path = {0!r}'.format(config_path))
+        with open(config_path, 'wb') as save_f:# Write data to file.
+            yaml.dump(
+                data=vars(instance),
+                stream=save_f,
+                explicit_start=True,# Begin with '---'
+                explicit_end=True,# End with '...'
+                default_flow_style=False# Output as multiple lines
+            )
+        return
+
+
+class YAMLConfigLoggingSmtpEmail():
+    """Handle reading, writing, and creating YAML config files.
+    For SMTP"""
+    def __init__(self, config_path=None):
+        # Set default values
+        self.smtp_server_address = ''
+        self.smtp_server_port = 465
+        self.sender_email_address = ''
+        self.sender_username = ''
+        self.sender_password = ''
+        self.recipient_address = ''
+        self.subject = ''
+        self.body_template = ''
+
+        if config_path:
+            # Ensure config dir exists.
+            config_dir = os.path.dirname(config_path)
+            if len(config_dir) > 0:# Only try to make a dir if ther is a dir to make.
+                if not os.path.exists(config_dir):
+                    os.makedirs(config_dir)
+            # Load/create config file
+            if os.path.exists(config_path):
+                self.load(config_path)# Load config file if it exists.
+            else:
+                self.save(config_path, self.__class__())# Create an example config file if no file exists.
+        return
+
+    def load(self, config_path):
+        """Load configuration from YAML file."""
+        logging.debug('Reading from config_path={0!r}'.format(config_path))
+        with open(config_path, 'rb') as load_f:# Read the config from file.
+            config = yaml.safe_load(load_f)
+        # Store values to class instance.
+        for key in config.keys():
+            setattr(self, key, config[key])# Sets self.key to config[key]
+        logging.debug('Loaded config values: {0!r}'.format(config))
         return
 
     def save(self, config_path, instance):
@@ -145,9 +199,10 @@ def format_message(message):
 
 
 def send_mail_gmail(sender_username, sender_password, recipient_address, subject, body_template):
+    """Send an email from gmail"""
+    logging.debug(u'send_mail_gmail() locals()={0!r}'.format(locals()))# Record arguments
     # Try sending an email
     logging.info("Sending email from gmail to {0!r}".format(recipient_address))
-
     # Validate values for email
     # credentials
     assert(type(sender_username) in [str, unicode])
@@ -175,12 +230,13 @@ def send_mail_smtp(
     smtp_server_address, smtp_server_port, sender_email_address,
     sender_username, sender_password, recipient_address,
     subject, body_template,
-    ):# TODO
+    ):# TODO WIP
     """
     Send one email using SMTP
     https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
     https://docs.python.org/2/library/email-examples.html
     """
+    logging.debug(u'send_mail_smtp() locals()={0!r}'.format(locals()))# Record arguments
     logging.info("Sending email using SMTP to {0!r}".format(recipient_address))
     # Validate values for email
     # server
@@ -210,9 +266,11 @@ def send_mail_smtp(
         host=smtp_server_address,
         port=smtp_server_port
     )
+    logging.debug('Logging in to email server')
+    s.login(sender_username, sender_password)
     # Send message
     logging.debug('Sending message')
-    s.sendmail(me, [you], msg.as_string())
+    s.sendmail(sender_email_address, [recipient_address], msg.as_string())
     # Clean up
     logging.debug('Ending SMTP connection')
     s.quit()
@@ -220,33 +278,85 @@ def send_mail_smtp(
     return
 
 
-def main():
-##    new_config_Class_test = YAMLConfigGmailSmall('test_config.yaml')
-##    return
+def send_mail_logging(
+    smtp_server_address, smtp_server_port, sender_email_address,
+    sender_username, sender_password, recipient_address,
+    subject, body_template,
+    ):
+    """Send an email over SMTP using the logging module.
+    https://docs.python.org/2/library/logging.handlers.html#logging.handlers.SMTPHandler
+    """
+    logging.debug(u'send_mail_logging() locals()={0!r}'.format(locals()))# Record arguments
+    # Format body
+    body_text = format_message(message=body_template)
+    logging.debug('body_text = {0!r}'.format(body_text))
+
+    formatter = logging.Formatter("%(asctime)s:%(message)s")
+    email_logger = logging.getLogger()
+    email_logger.setLevel(logging.DEBUG)
+    # Instantiate logging handler
+    mh = logging.handlers.SMTPHandler(
+        mailhost=(smtp_server_address, smtp_server_port),
+        fromaddr=sender_email_address,
+        toaddrs=recipient_address,
+        subject=subject,
+        credentials=(sender_username, sender_password),
+        secure=None
+    )
+    mh.setLevel(logging.ERROR)
+    mh.setFormatter(formatter)
+    email_logger.addHandler(mh)
+    # Send email
+    email_logger.error(body_text)
+    return
+
+
+def dev():
+    logging.warning(u'running dev()')
+    # New SMTP
     # SMTP
-    logging.info('Testing SMTP')
-    smtp_config = YAMLConfigSMTP(config_path='smtp_config.yaml')
-##    send_mail_smtp(
-##        smtp_server_address=smtp_config.smtp_server_address,
-##        smtp_server_port=smtp_config.smtp_server_port,
-##        sender_email_address=smtp_config.sender_email_address,
-##        sender_username=smtp_config.sender_username,
-##        sender_password=smtp_config.sender_password,
-##        recipient_address=smtp_config.recipient_address,
-##        subject=smtp_config.subject,
-##        body_template=smtp_config.body_template
-##    )
+    logging.info('Testing smtplib-based SMTP')
+    cfg_smtplib = YAMLConfigSmtplibEmail(config_path='config.email_smtplib.yaml')
+    send_mail_smtp(
+        smtp_server_address = cfg_smtplib.smtp_server_address,
+        smtp_server_port = cfg_smtplib.smtp_server_port,
+        sender_email_address = cfg_smtplib.sender_email_address,
+        sender_username = cfg_smtplib.sender_username,
+        sender_password = cfg_smtplib.sender_password,
+        recipient_address = cfg_smtplib.recipient_address,
+        subject = cfg_smtplib.subject,
+        body_template = cfg_smtplib.body_template
+    )
     # Gmail
     logging.info('Testing Gmail')
-    gmail_config = YAMLConfigGmail(config_path='gmail_config.yaml')
+    cfg_gmail = YAMLConfigYagmailEmail(config_path='config.email_gmail.yaml')
     send_mail_gmail(
-        sender_username=gmail_config.sender_username,
-        sender_password=gmail_config.sender_password,
-        recipient_address=gmail_config.recipient_address,
-        subject=gmail_config.subject,
-        body_template=gmail_config.body_template
+        sender_username=cfg_gmail.sender_username,
+        sender_password=cfg_gmail.sender_password,
+        recipient_address=cfg_gmail.recipient_address,
+        subject=cfg_gmail.subject,
+        body_template=cfg_gmail.body_template
+    )
+    # Logging smtphandler
+    logging.info('Testing logging-based SMTP')
+    cfg_logging = YAMLConfigLoggingSmtpEmail(config_path='config.email_logging.yaml')
+    send_mail_logging(
+        smtp_server_address = cfg_logging.smtp_server_address,
+        smtp_server_port = cfg_logging.smtp_server_port,
+        sender_email_address = cfg_logging.sender_email_address,
+        sender_username = cfg_logging.sender_username,
+        sender_password = cfg_logging.sender_password,
+        recipient_address = cfg_logging.recipient_address,
+        subject = cfg_logging.subject,
+        body_template = cfg_logging.body_template,
     )
     return
+
+
+def main():
+    dev()
+    return
+
 
 
 if __name__ == '__main__':
