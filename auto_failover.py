@@ -57,6 +57,27 @@ CUSTOM_DELAY = 0.1# This will use a delay of 0.1 second
 
 
 
+class Config():# WIP
+    """Move around configuration vars and stuff"""
+    def __init__(self):# TODO: Choose what to store here
+        self.email_cfg = None# Email config subclass
+        self.req_ses = None# Requests Session object
+        self.failure_funcs = []# [(function,args),...]
+        return
+
+    def fail(self):
+        """Trigger all failure hooks"""
+        for func, args in self.failure_funcs:
+            try:
+                func(*args)# TODO: Make sure args get passed correctly
+            except Exception:
+                pass# We want all the outputs to fire
+        return
+
+
+
+
+
 
 class FailoverException(Exception):
     """Local subclass for all custom exceptions within auto_failover.py"""
@@ -135,7 +156,7 @@ def on_failure():
     """
     try:
         logging.info('Attempting to send email')
-        send_mail_gmail(
+        send_email.send_mail_gmail(
             sender_username=gmail_config.sender_username,
             sender_password=gmail_config.sender_password,
             recipient_address=gmail_config.recipient_address,

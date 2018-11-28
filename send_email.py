@@ -278,39 +278,39 @@ def send_mail_smtp(
     return
 
 
-##def send_mail_logging(# WIP
-##    smtp_server_address, smtp_server_port, sender_email_address,
-##    sender_username, sender_password, recipient_address,
-##    subject, body_template,
-##    ):
-##    """Send an email over SMTP using the logging module.
-##    https://docs.python.org/2/library/logging.handlers.html#logging.handlers.SMTPHandler
-##    !This function does not work yet!
-##    """
-##    logging.debug(u'send_mail_logging() locals()={0!r}'.format(locals()))# Record arguments
-##    logging.warning('send_mail_logging() !This function does not work yet!')
-##    # Format body
-##    body_text = format_message(message=body_template)
-##    logging.debug('body_text = {0!r}'.format(body_text))
-##
-##    formatter = logging.Formatter("%(asctime)s:%(message)s")
-##    email_logger = logging.getLogger()
-##    email_logger.setLevel(logging.DEBUG)
-##    # Instantiate logging handler
-##    mh = logging.handlers.SMTPHandler(
-##        mailhost=(smtp_server_address, smtp_server_port),
-##        fromaddr=sender_email_address,
-##        toaddrs=recipient_address,
-##        subject=subject,
-##        credentials=(sender_username, sender_password),
-##        secure=None
-##    )
-##    mh.setLevel(logging.ERROR)
-##    mh.setFormatter(formatter)
-##    email_logger.addHandler(mh)
-##    # Send email
-##    email_logger.error(body_text)
-##    return
+def send_mail_logging(# WIP
+    smtp_server_address, smtp_server_port, sender_email_address,
+    sender_username, sender_password, recipient_address,
+    subject, body_template,
+    ):
+    """Send an email over SMTP using the logging module.
+    https://docs.python.org/2/library/logging.handlers.html#logging.handlers.SMTPHandler
+    !This function does not work yet!
+    """
+    logging.debug(u'send_mail_logging() locals()={0!r}'.format(locals()))# Record arguments
+    logging.warning('send_mail_logging() !This function does not work yet!')
+    # Format body
+    body_text = format_message(message=body_template)
+    logging.debug('body_text = {0!r}'.format(body_text))
+
+    formatter = logging.Formatter("%(asctime)s:%(message)s")
+    email_logger = logging.getLogger()
+    email_logger.setLevel(logging.DEBUG)
+    # Instantiate logging handler
+    mh = logging.handlers.SMTPHandler(
+        mailhost=(smtp_server_address, smtp_server_port),
+        fromaddr=sender_email_address,
+        toaddrs=recipient_address,
+        subject=subject,
+        credentials=(sender_username, sender_password),
+        secure=None
+    )
+    mh.setLevel(logging.CRITICAL)
+    mh.setFormatter(formatter)
+    email_logger.addHandler(mh)
+    # Send email
+    email_logger.critical(body_text)
+    return
 
 
 def dev():
@@ -339,19 +339,19 @@ def dev():
         subject=cfg_gmail.subject,
         body_template=cfg_gmail.body_template
     )
-##    # Logging smtphandler
-##    logging.info('Testing logging-based SMTP')
-##    cfg_logging = YAMLConfigLoggingSmtpEmail(config_path='config.email_logging.yaml')
-##    send_mail_logging(
-##        smtp_server_address = cfg_logging.smtp_server_address,
-##        smtp_server_port = cfg_logging.smtp_server_port,
-##        sender_email_address = cfg_logging.sender_email_address,
-##        sender_username = cfg_logging.sender_username,
-##        sender_password = cfg_logging.sender_password,
-##        recipient_address = cfg_logging.recipient_address,
-##        subject = cfg_logging.subject,
-##        body_template = cfg_logging.body_template,
-##    )
+    # Logging smtphandler
+    logging.info('Testing logging-based SMTP')
+    cfg_logging = YAMLConfigLoggingSmtpEmail(config_path='config.email_logging.yaml')
+    send_mail_logging(
+        smtp_server_address = cfg_logging.smtp_server_address,
+        smtp_server_port = cfg_logging.smtp_server_port,
+        sender_email_address = cfg_logging.sender_email_address,
+        sender_username = cfg_logging.sender_username,
+        sender_password = cfg_logging.sender_password,
+        recipient_address = cfg_logging.recipient_address,
+        subject = cfg_logging.subject,
+        body_template = cfg_logging.body_template,
+    )
     return
 
 
