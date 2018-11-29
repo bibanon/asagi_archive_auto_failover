@@ -73,7 +73,6 @@ def stateless_fetch(url, method='get', data=None, expect_status=200, headers=Non
 
 
 
-
 class BaseFailureHandler():
     """Superclass for failure handlers"""
     def __init__(self):
@@ -97,10 +96,10 @@ class BaseFailureHandler():
 
 
 
-
 class ExampleFailureHandler(BaseFailureHandler):
     """Example failure handler class"""
     def __init__(self):
+        BaseFailureHandler.__init__(self)
         self.actions = []
         # Email
         self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path='gmail_config.yaml')
@@ -128,37 +127,12 @@ class ExampleFailureHandler(BaseFailureHandler):
 
 
 
-##class FourChan():
-##    """Class for 4chan related actions and values"""
-##    def __init__(self):
-##        self.board = None
-##        self.chan = None
-##        self.req_ses = None
-##        return
-##class FourChanBoard(FourChan):
-##    def __init__(self):
-##        self.api_url = None# URL to board API JSON (.../1.json)
-##        self.ratelimit = 2# Rateleimit in seconds
-##        self.req_ses = None
-##        return
-##class FoolFuuka():
-##    pass
-##class Desuarchive(FoolFuuka):
-##    """Class for Desuarchive related actions and values"""
-##    def __init__(self):
-##        self.archive = None
-##        self.chan = None
-##        return
-
-
-
-
-class FourChanCo():
-    """4chan /co/"""
+class FourChanBoard():
     def __init__(self):
-        self.api_url = 'http://a.4cdn.org/co/1.json'# Avoid https per 4ch API docs
-        self.high_post_num = 0
-        self.ratelimit = 3# Seconds to wait after an API request
+        """Set instance default values"""
+        self.api_url = ''# URL to board API JSON (.../1.json)
+        self.high_post_num = 0#
+        self.ratelimit = 3# Rateleimit in seconds
         return
 
     def find_highest_post_num(self, api_data):
@@ -186,12 +160,25 @@ class FourChanCo():
 
 
 
-class DesuarchiveCo():
+class FourChanCo(FourChanBoard):
+    """4chan /co/"""
     def __init__(self):
-        self.api_url = 'http://desuarchive.org/_/api/chan/index/?board=co&page=1'
-        self.high_post_num = 0
+        """Set board values"""
+        FourChanBoard.__init__(self)# Load defaults then override any changes
+        self.api_url = 'http://a.4cdn.org/co/1.json'# Avoid https per 4ch API docs
         self.ratelimit = 3# Seconds to wait after an API request
         return
+
+
+
+class FoolFuukaBoard():
+    """Superclass for archive board classes"""
+    def __init__(self):
+        """Set instance default values"""
+        self.api_url = ''
+        self.high_post_num = 0# Initialize at zero
+        self.ratelimit = None# Seconds to wait after an API request
+        return# Do nothing
 
     def find_highest_post_num(self, api_data):
         """Find the highest post number for foolfuuka API
@@ -223,10 +210,18 @@ class DesuarchiveCo():
 
 
 
+class DesuarchiveCo(FoolFuukaBoard):
+    def __init__(self):
+        """Set board values"""
+        FoolFuukaBoard.__init__(self)# Load defaults then override any changes
+        self.api_url = 'http://desuarchive.org/_/api/chan/index/?board=co&page=1'
+        self.ratelimit = 3# Seconds to wait after an API request
+        return
+
 
 
 class ArchiveChecker():
-    """Class desc."""
+    """Class to handle archive failure detection and response."""
     def __init__(self, chan_board, archive_board, failure_handler):
         logging.debug(u'ArchiveChecker.__init__() locals()={0!r}'.format(locals()))# Record arguments
         # Classes
@@ -238,16 +233,16 @@ class ArchiveChecker():
         self.threshold_cycles = 10# How many consecutive failed cycles are permitted before notification?
         # Internal state
         self.consecutive_failures = 0# Counter for how many times in a row update check failed
-        self.archive_high_num_old = 0
-        self.archive_high_num_new = 0
-        self.chan_high_num_old = 0
-        self.chan_high_num_new = 0
+        self.archive_high_num_old = 0# Previous cycle's highest post_num
+        self.archive_high_num_new = 0# Current cycle's highest post_num
+        self.chan_high_num_old = 0# Previous cycle's highest post_num
+        self.chan_high_num_new = 0# Current cycle's highest post_num
         return
 
     def poll_sites(self):
         """Do one online check action"""
         logging.debug('Polling sites')
-        failed = False
+
         # Check chan high post_num
         chan_new_num = self.chan_board.check_api()
         if not chan_new_num:
@@ -260,10 +255,11 @@ class ArchiveChecker():
             logging.error('Archive could not be reached')
             return self.fail()# Couldn't reach our website
 
-        # Compare post numbers
+        # Count new posts
         chan_new_posts = (self.chan_high_num_new - self.chan_high_num_old)
         archive_new_posts = (self.archive_high_num_new - self.archive_high_num_old)
 
+        # Compare post numbers
         chan_has_new_posts = (chan_new_posts > 0)# Are there any new chan posts
         archive_has_new_posts = (archive_new_posts > 0)# Are there any new archive posts
         if (chan_has_new_posts and not archive_has_new_posts):
@@ -287,7 +283,6 @@ class ArchiveChecker():
             logging.critical('Unhandled exception in loop!')
             logging.exception(err)
             self.alert()
-
 
     def success(self):
         """Board looks like it's online"""
