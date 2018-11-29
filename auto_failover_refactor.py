@@ -17,6 +17,7 @@ import logging.handlers
 import datetime
 import json
 import subprocess
+import sys
 # Remote libraries
 import requests
 import requests.exceptions
@@ -77,6 +78,7 @@ class BaseFailureHandler():
     """Superclass for failure handlers"""
     def __init__(self):
         self.actions = []
+        self.retrigger_delay = None# Time in seconds to sleep after trigger() runs, None for script exit on trigger.
         return
 
     def add_action(self, function, arguments={}):
@@ -92,6 +94,19 @@ class BaseFailureHandler():
             func, args = action
             func(*args)
         logging.debug('Finished triggering')
+        if self.retrigger_delay is None:
+            logging.info('Exiting script')
+            sys.exit()
+        else:
+            logging.info('Pausing for {0!r} seconds before resuming checking'.format(self.retrigger_delay))
+            time.sleep(self.retrigger_delay)
+        return
+
+    def run_command(self, command):# WIP
+        """Run a shell command"""
+        logging.debug('Running shell command: {0!r}'.format(command))
+        cmd_output = subprocess.check_output(command, shell=True)
+        logging.debug('Ran shell command: {0!r}'.format(command))
         return
 
 
@@ -99,8 +114,8 @@ class BaseFailureHandler():
 class ExampleFailureHandler(BaseFailureHandler):
     """Example failure handler class"""
     def __init__(self):
-        BaseFailureHandler.__init__(self)
-        self.actions = []
+        BaseFailureHandler.__init__(self)# Load defaults then override any changes
+        self.retrigger_delay = None# Time in seconds to sleep after trigger() runs, None for script exit on trigger.
         # Email
         self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path='gmail_config.yaml')
         self.add_action(self.send_email)
@@ -118,11 +133,6 @@ class ExampleFailureHandler(BaseFailureHandler):
             body_template=self.gmail_cfg.body_template
         )
         logging.debug('Sent email')
-        return
-
-    def run_command(self):# WIP
-        logging.debug('Running shell commands')
-        logging.debug('Ran shell commands')
         return
 
 
