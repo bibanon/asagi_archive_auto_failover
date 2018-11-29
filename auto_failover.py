@@ -350,7 +350,7 @@ if __name__ == '__main__':
     setup_logging(os.path.join("debug", "auto_failover.log.txt"))# Setup logging
     try:
         # Load configurations here to make them global
-        gmail_config = send_email.YAMLConfigGmail(config_path='gmail_config.yaml')
+        gmail_config = send_email.YAMLConfigYagmailEmail(config_path='gmail_config.yaml')
         main()
     # Log exceptions
     except Exception, e:
