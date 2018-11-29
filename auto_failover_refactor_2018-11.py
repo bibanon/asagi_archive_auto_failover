@@ -80,7 +80,7 @@ class BaseFailureHandler():
         self.actions = []
         return
 
-    def add_action(self, function, arguments):
+    def add_action(self, function, arguments={}):
         """Register a function and its arguments for execution on triggering"""
         self.actions.append( (function, arguments) )
         return
@@ -91,7 +91,7 @@ class BaseFailureHandler():
         for action in self.actions:
             logging.debug('action={0!r}'.format(action))
             func, args = action
-            func(args)
+            func(*args)
         logging.debug('Finished triggering')
         return
 
@@ -101,6 +101,7 @@ class BaseFailureHandler():
 class ExampleFailureHandler(BaseFailureHandler):
     """Example failure handler class"""
     def __init__(self):
+        self.actions = []
         # Email
         self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path='gmail_config.yaml')
         self.add_action(self.send_email)
@@ -160,18 +161,18 @@ class FourChanCo():
         self.ratelimit = 3# Seconds to wait after an API request
         return
 
-    def find_highest_post_num(api_data):
+    def find_highest_post_num(self, api_data):
         """Find the highest post number for 4chan API
         ex. http://a.4cdn.org/adv/1.json"""
-        highest_seen_id = 0# Initialize at 0 so we can run comparisons
+        highest_post_num = 0# Initialize at 0 so we can run comparisons
         threads = api_data['threads']
         for thread in threads:
             last_post_num = int(thread['posts'][-1]['no'])# The last post in a thread will have the highest post number
             # If the highest post in the thread is higher than our largest seen, replace the largest seen value
-            if (last_post_num > highest_seen_id):
-                highest_seen_id = last_post_num
-                logging.debug('highest_seen_id = {0!r}'.format(highest_seen_id))
-        return highest_seen_id
+            if (last_post_num > highest_post_num):
+                highest_post_num = last_post_num
+        logging.debug('highest_post_num={0!r}'.format(highest_post_num))
+        return highest_post_num
 
     def check_api(self):
         """Find the current high ID if possible.
@@ -195,7 +196,7 @@ class DesuarchiveCo():
     def find_highest_post_num(self, api_data):
         """Find the highest post number for foolfuuka API
         ex. http://archive.4plebs.org/_/api/chan/index/?board=adv&page=1"""
-        highest_seen_id = 0# Initialize at 0 so we can run comparisons
+        highest_post_num = 0# Initialize at 0 so we can run comparisons
         for thread_num in api_data.keys():# For each thread in the API page
     ##        logging.debug('thread_num = {0!r}'.format(thread_num))
             thread = api_data[thread_num]
@@ -205,10 +206,10 @@ class DesuarchiveCo():
             else:# If there are no replies, use the OP post number
                 last_post_num = int(thread['op']['num'])# Must coerce from string to integer for numeric comparisons
             # If the highest post in the thread is higher than our largest seen, replace the largest seen value
-            if (last_post_num > highest_seen_id):
-                highest_seen_id = last_post_num
-                logging.debug('highest_seen_id = {0!r}'.format(highest_seen_id))
-        return highest_seen_id
+            if (last_post_num > highest_post_num):
+                highest_post_num = last_post_num
+        logging.debug('highest_post_num = {0!r}'.format(highest_post_num))
+        return highest_post_num
 
     def check_api(self):
         """Find the current high ID if possible.
@@ -270,7 +271,7 @@ class ArchiveChecker():
             self.fail()# Archive has failed to grab new 4chan posts
 
         logging.debug('No failure detected')
-        return self.sucess()# Nothing went wrong.
+        return self.success()# Nothing went wrong.
 
     def loop(self):
         """Loop forever."""
@@ -278,7 +279,7 @@ class ArchiveChecker():
         try:
             while True:
                 self.poll_sites()
-                if (self.consecutive_failures > threshold_cycles):
+                if (self.consecutive_failures > self.threshold_cycles):
                     logging.critical('Too many consecutive failures! Website is down!')
                     self.alert()
                 time.sleep(self.recheck_delay)
@@ -312,11 +313,11 @@ class ArchiveChecker():
 
 def example():
     logging.info('Start example()')
-    co_4ch = FourChanCo()
-    co_desu = DesuarchiveCo()
-    fail_h = ExampleFailureHandler()
+    co_4ch = FourChanCo()# chan we're checking
+    co_desu = DesuarchiveCo()# archive we're checking
+    fail_h = ExampleFailureHandler()# What to do if the site goes down
     ac = ArchiveChecker(co_4ch, co_desu, fail_h)
-    ac.loop()
+    ac.loop()# Start checking the site, will loop until an exception occurs.
     logging.info('End example()')
     return
 
