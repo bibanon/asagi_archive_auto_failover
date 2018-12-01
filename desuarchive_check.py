@@ -9,6 +9,8 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 # StdLib
+import os
+import logging
 # Remote libraries
 # local
 import auto_failover
@@ -46,9 +48,9 @@ class DesuarchiveFailureHandler(auto_failover.BaseFailureHandler):
         # Email
         gmail_config_path = os.path.join('config', 'email_gmail.yaml')
         self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path=gmail_config_path)
-        self.add_action(self.send_email, {})
+        self.add_action(function=self.send_email, arguments={})
         # Shell commands
-        self.add_action(self.run_command, command=[''])# TODO: Shell script to do archive failover.
+        self.add_action(function=self.run_command, arguments={'command': 'echo SOME TEXT > SOME_FILE.txt'})# TODO: Shell script to do archive failover.
         return
 
     def send_email(self, *args, **kwargs):
@@ -68,20 +70,31 @@ class DesuarchiveFailureHandler(auto_failover.BaseFailureHandler):
 
 def main():
     """Start monitoring Desuarchive"""
+    logging.debug('Setup monitoring for Desuarchive')
     co_4ch = FourChanCo()# chan we're checking
     co_desu = DesuarchiveCo()# archive we're checking
-    fail_h = ExampleFailureHandler()# What to do if the site goes down
-    ac = ArchiveChecker(co_4ch, co_desu, fail_h)
+    fail_h = DesuarchiveFailureHandler()# What to do if the site goes down
+    ac = auto_failover.ArchiveChecker(
+        chan_board = co_4ch,
+        archive_board = co_desu,
+        failure_handler = fail_h,
+        recheck_delay = 120,# Delay in seconds between online check cycles. 120 is sane-seeming value.
+        threshold_cycles = 10,# How many consecutive failed cycles are permitted before notification? (-1 triggers immediately, 0 triggers on first failure)
+    )
+    logging.debug('Begin monitoring for Desuarchive')
     ac.loop()# Start checking the site, will loop until an exception occurs.
+    logging.debug('main() returning')
     return# This function should only return if KeyboardInterrupt is used or something in this code is broken.
 
 
 if __name__ == '__main__':
-    common.setup_logging(os.path.join("debug", "desuarchive_check.log.txt"))# Setup logging
+    common.setup_logging(# Setup logging
+        os.path.join("debug", "desuarchive_check.log.txt"),
+        console_level=logging.DEBUG# Restrict log messages sent to console to (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    )
     try:
         main()
-    # Log exceptions
-    except Exception, e:
+    except Exception, e:# Log fatal exceptions
         logging.critical(u"Unhandled exception!")
         logging.exception(e)
     logging.info(u"Program finished.")

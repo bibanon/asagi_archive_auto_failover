@@ -84,19 +84,20 @@ class BaseFailureHandler():
 
     def add_action(self, function, arguments={}):
         """Register a function and its arguments for execution on triggering"""
+        logging.debug(u'add_action() locals()={0!r}'.format(locals()))# Record arguments
         self.actions.append( (function, arguments) )
         return
 
     def trigger(self):
         """Execute all actions"""
-        logging.debug('Triggering!')
+        logging.info('Triggering!')
         for action in self.actions:
             logging.debug('action={0!r}'.format(action))
             func, args = action
             # ** turns a dict into named args
             # https://stackoverflow.com/questions/2921847/what-does-the-star-operator-mean
             func(**args)
-        logging.debug('Finished triggering')
+        logging.info('Finished triggering')
         if self.retrigger_delay is None:
             # Exit script if delay is set to None
             logging.info('Exiting script')
@@ -107,9 +108,17 @@ class BaseFailureHandler():
         return
 
     def run_command(self, command):# WIP
-        """Run a shell command"""
-        logging.debug('Running shell command: {0!r}'.format(command))
-        cmd_output = subprocess.check_output(command, shell=True)
+        """Run a shell command.
+        See https://docs.python.org/2/library/subprocess.html"""
+        logging.debug(u'run_command() locals()={0!r}'.format(locals()))# Record arguments
+        try:
+            logging.info('Running shell command: {0!r}'.format(command))
+            cmd_output = subprocess.check_output(command, shell=True)
+            logging.info('Command returned status code 0')# Returning 0 means success.
+        except subprocess.CalledProcessError, err:
+            # If command returns anything other than 0, the command had some kind of error.
+            logging.error('Command returned non-zero status code: {0!r}'.format(err.returncode))
+            logging.exception(err)
         logging.debug('Ran shell command: {0!r}'.format(command))
         return
 
@@ -159,7 +168,7 @@ class FourChanBoard():
             # If the highest post in the thread is higher than our largest seen, replace the largest seen value
             if (last_post_num > highest_post_num):
                 highest_post_num = last_post_num
-        logging.debug('highest_post_num={0!r}'.format(highest_post_num))
+        logging.debug('4ch highest_post_num={0!r}'.format(highest_post_num))
         return highest_post_num
 
     def check_api(self):
@@ -198,7 +207,7 @@ class FoolFuukaBoard():
             # If the highest post in the thread is higher than our largest seen, replace the largest seen value
             if (last_post_num > highest_post_num):
                 highest_post_num = last_post_num
-        logging.debug('highest_post_num = {0!r}'.format(highest_post_num))
+        logging.debug('FF highest_post_num = {0!r}'.format(highest_post_num))
         return highest_post_num
 
     def check_api(self):
@@ -216,15 +225,17 @@ class FoolFuukaBoard():
 
 class ArchiveChecker():
     """Class to handle archive failure detection and response."""
-    def __init__(self, chan_board, archive_board, failure_handler):
+    def __init__(self, chan_board, archive_board, failure_handler,
+        recheck_delay=120, threshold_cycles=10
+        ):
         logging.debug(u'ArchiveChecker.__init__() locals()={0!r}'.format(locals()))# Record arguments
         # Classes
         self.archive_board = archive_board
         self.chan_board = chan_board
         self.failure_handler = failure_handler# failure_handler.trigger() is called to act on failures
         # Config
-        self.recheck_delay = 120# Delay in seconds between online check cycles. 120 is sane-seeming value.
-        self.threshold_cycles = 10# How many consecutive failed cycles are permitted before notification?
+        self.recheck_delay = recheck_delay# Delay in seconds between online check cycles. 120 is sane-seeming value.
+        self.threshold_cycles = threshold_cycles# How many consecutive failed cycles are permitted before notification? (-1 triggers immediately, 0 triggers on first failure)
         # Internal state
         self.consecutive_failures = 0# Counter for how many times in a row update check failed
         self.archive_high_num_old = 0# Previous cycle's highest post_num
@@ -258,7 +269,7 @@ class ArchiveChecker():
         archive_has_new_posts = (archive_new_posts > 0)# Are there any new archive posts
         if (chan_has_new_posts and not archive_has_new_posts):
             logging.error('Archive has not updated despite new chan posts')
-            self.fail()# Archive has failed to grab new 4chan posts
+            return self.fail()# Archive has failed to grab new 4chan posts
 
         logging.debug('No failure detected')
         return self.success()# Nothing went wrong.
@@ -266,11 +277,13 @@ class ArchiveChecker():
     def loop(self):
         """Loop forever."""
         logging.debug('Starting poll loop')
+        logging.debug('start self.consecutive_failures={0!r}, self.threshold_cycles={1!r}'.format(self.consecutive_failures , self.threshold_cycles))# Remind us what our failure threshold was
         try:
             while True:
                 self.poll_sites()
                 if (self.consecutive_failures > self.threshold_cycles):
                     logging.critical('Too many consecutive failures! Website is down!')
+                    logging.debug('failure self.consecutive_failures={0!r}, self.threshold_cycles={1!r}'.format(self.consecutive_failures , self.threshold_cycles))# Remind us what our failure threshold was
                     self.alert()
                 time.sleep(self.recheck_delay)
         except Exception, err:
