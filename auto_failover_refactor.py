@@ -92,7 +92,9 @@ class BaseFailureHandler():
         for action in self.actions:
             logging.debug('action={0!r}'.format(action))
             func, args = action
-            func(*args)
+            # ** turns a dict into named args
+            # https://stackoverflow.com/questions/2921847/what-does-the-star-operator-mean
+            func(**args)
         logging.debug('Finished triggering')
         if self.retrigger_delay is None:
             logging.info('Exiting script')
