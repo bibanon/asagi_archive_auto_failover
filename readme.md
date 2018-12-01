@@ -3,27 +3,37 @@
 
 ## USAGE
 ## Set archive to scan
-TODO: Write this section
+This is set by creating a class for the board.
+See desuarchive_check.py for an example.
 
 ## Set command to run on archive failure
-edit COMMAND_ON_FAILURE at the top of auto_failover.py to your desired command\(s\)
+This is done by creating a FailureHandler class defining actions to run.
+See desuarchive_check.py for an example.
 
 ### Set email options
 #### Gmail
 It is reccomended to create an account specifically for this script as a security precaution.
 The Gmail account this script uses must be configured to allow unsecure applications to use it.
-Email configuration for Gmail is set through gmail_config.yaml
-- sender_username: Gmail username of sending account
-- sender_password: Gmail password of sending account
-- recipient_address: Email address to send an email to
-- body_template: The body of the email to send
+Email configuration for Gmail is set through config.email_gmail.yaml
+- sender_username: Gmail username of sending account.
+- sender_password: Gmail password of sending account.
+- recipient_address: Email address to send an email to.
+- body_template: The body of the email to send:
 > Available formatting codes:
 >```
 >{unixtime} The current unix-style time (time-since-epoch in seconds)
 >```
 
 #### SMTP
-Not yet implimented.
+Set through config.email_smtp.yaml
+- body_template: The text you want to send.
+- recipient_address: The email address the message will be sent to.
+- sender_email_address: The email address we are sending the message from.
+- sender_password: The password of the account we are sending from.
+- sender_username: The username we are sending from.
+- smtp_server_address: The address of the SMTP server we are sending from.
+- smtp_server_port: The port on the SMTP server (Probably 465).
+- subject: The email's subject field.
 
 ## Run script & set to automatically run
 To run the failure detection script:

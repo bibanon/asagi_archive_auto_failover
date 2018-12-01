@@ -126,7 +126,7 @@ class YAMLConfigSmtplibEmail():
 
 class YAMLConfigLoggingSmtpEmail():
     """Handle reading, writing, and creating YAML config files.
-    For SMTP"""
+    For logging-based SMTP"""
     def __init__(self, config_path=None):
         # Set default values
         self.smtp_server_address = ''
@@ -188,6 +188,9 @@ def get_current_unix_time_int():
 
 
 def format_message(message):
+    """Given a string, apply formatting to it
+    {unixtime} - seconds-since-epoch time
+    """
     logging.debug('message = {0!r}'.format(message))
     assert(type(message) in [str, unicode])
     new_message = message
@@ -314,6 +317,7 @@ def send_mail_logging(# WIP
 
 
 def dev():
+    """Development test area"""
     logging.warning(u'running dev()')
     # New SMTP
     # SMTP

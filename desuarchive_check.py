@@ -8,14 +8,15 @@
 # Copyright:   (c) User 2018
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
+# StdLib
+# Remote libraries
+# local
 import auto_failover_refactor as auto_failover
 import send_email
-
+import common# We need this for setting up logging
 
 
 # Board definition/config
-
-
 class FourChanCo(auto_failover.FourChanBoard):
     """4chan /co/"""
     def __init__(self):
@@ -43,13 +44,13 @@ class DesuarchiveFailureHandler(auto_failover.BaseFailureHandler):
         auto_failover.BaseFailureHandler.__init__(self)# Load defaults then override any changes
         self.retrigger_delay = None# Time in seconds to sleep after trigger() runs, None for script exit on trigger.
         # Email
-        self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path='gmail_config.yaml')
-        self.add_action(self.send_email)
+        self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path='config.email_gmail.yaml')
+        self.add_action(self.send_email, {})
         # Shell commands
         self.add_action(self.run_command, command=[''])
         return
 
-    def send_email(self):
+    def send_email(self, *args, **kwargs):
         """Send an email from Gmail"""
         logging.debug('Sending email')
         send_email.send_mail_gmail(

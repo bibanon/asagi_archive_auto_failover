@@ -27,6 +27,7 @@ import send_email
 
 
 def stateless_fetch(url, method='get', data=None, expect_status=200, headers=None, delay=None):
+    """Grab a webpage using Requests, without using a Session object to persist history, cookies, etc."""
 #    headers = {'user-agent': user_agent}
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
     if headers is None:
@@ -77,7 +78,7 @@ def stateless_fetch(url, method='get', data=None, expect_status=200, headers=Non
 class BaseFailureHandler():
     """Superclass for failure handlers"""
     def __init__(self):
-        self.actions = []
+        self.actions = []# [ [func, {'argname': argvalue}],... ]
         self.retrigger_delay = None# Time in seconds to sleep after trigger() runs, None for script exit on trigger.
         return
 
@@ -97,6 +98,7 @@ class BaseFailureHandler():
             func(**args)
         logging.debug('Finished triggering')
         if self.retrigger_delay is None:
+            # Exit script if delay is set to None
             logging.info('Exiting script')
             sys.exit()
         else:
@@ -119,13 +121,12 @@ class ExampleFailureHandler(BaseFailureHandler):
         BaseFailureHandler.__init__(self)# Load defaults then override any changes
         self.retrigger_delay = None# Time in seconds to sleep after trigger() runs, None for script exit on trigger.
         # Email
-        self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path='gmail_config.yaml')
-        self.add_action(self.send_email)
-        # Shell commands
-        self.add_action(self.run_command)
+        self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path='config.email_gmail.yaml')
+        self.add_action(self.send_email, {})
         return
 
-    def send_email(self):
+    def send_email(self, *args, **kwargs):
+        """Send an email from Gmail"""
         logging.debug('Sending email')
         send_email.send_mail_gmail(
             sender_username=self.gmail_cfg.sender_username,
@@ -172,17 +173,6 @@ class FourChanBoard():
 
 
 
-class FourChanCo(FourChanBoard):
-    """4chan /co/"""
-    def __init__(self):
-        """Set board values"""
-        FourChanBoard.__init__(self)# Load defaults then override any changes
-        self.api_url = 'http://a.4cdn.org/co/1.json'# Avoid https per 4ch API docs
-        self.ratelimit = 3# Seconds to wait after an API request
-        return
-
-
-
 class FoolFuukaBoard():
     """Superclass for archive board classes"""
     def __init__(self):
@@ -220,15 +210,6 @@ class FoolFuukaBoard():
             return high_post_num
         return False
 
-
-
-class DesuarchiveCo(FoolFuukaBoard):
-    def __init__(self):
-        """Set board values"""
-        FoolFuukaBoard.__init__(self)# Load defaults then override any changes
-        self.api_url = 'http://desuarchive.org/_/api/chan/index/?board=co&page=1'
-        self.ratelimit = 3# Seconds to wait after an API request
-        return
 
 
 
@@ -317,20 +298,7 @@ class ArchiveChecker():
         return
 
 
-
-def example():
-    logging.info('Start example()')
-    co_4ch = FourChanCo()# chan we're checking
-    co_desu = DesuarchiveCo()# archive we're checking
-    fail_h = ExampleFailureHandler()# What to do if the site goes down
-    ac = ArchiveChecker(co_4ch, co_desu, fail_h)
-    ac.loop()# Start checking the site, will loop until an exception occurs.
-    logging.info('End example()')
-    return
-
-
 def main():
-    example()
     return
 
 
