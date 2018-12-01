@@ -11,7 +11,7 @@
 # StdLib
 # Remote libraries
 # local
-import auto_failover_refactor as auto_failover
+import auto_failover
 import send_email
 import common# We need this for setting up logging
 
