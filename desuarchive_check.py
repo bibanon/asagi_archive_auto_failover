@@ -44,10 +44,11 @@ class DesuarchiveFailureHandler(auto_failover.BaseFailureHandler):
         auto_failover.BaseFailureHandler.__init__(self)# Load defaults then override any changes
         self.retrigger_delay = None# Time in seconds to sleep after trigger() runs, None for script exit on trigger.
         # Email
-        self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path='config.email_gmail.yaml')
+        gmail_config_path = os.path.join('config', 'email_gmail.yaml')
+        self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path=gmail_config_path)
         self.add_action(self.send_email, {})
         # Shell commands
-        self.add_action(self.run_command, command=[''])
+        self.add_action(self.run_command, command=[''])# TODO: Shell script to do archive failover.
         return
 
     def send_email(self, *args, **kwargs):

@@ -121,7 +121,8 @@ class ExampleFailureHandler(BaseFailureHandler):
         BaseFailureHandler.__init__(self)# Load defaults then override any changes
         self.retrigger_delay = None# Time in seconds to sleep after trigger() runs, None for script exit on trigger.
         # Email
-        self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path='config.email_gmail.yaml')
+        gmail_config_path = os.path.join('config', 'email_gmail.yaml')
+        self.gmail_cfg = send_email.YAMLConfigYagmailEmail(config_path=gmail_config_path)
         self.add_action(self.send_email, {})
         return
 
@@ -303,7 +304,7 @@ def main():
 
 
 if __name__ == '__main__':
-    common.setup_logging(os.path.join("debug", "auto_failover_refactor_2018-11.log.txt"))# Setup logging
+    common.setup_logging(os.path.join("debug", "auto_failover.log.txt"))# Setup logging
     try:
         main()
     # Log exceptions

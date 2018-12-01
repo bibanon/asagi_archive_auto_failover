@@ -202,7 +202,8 @@ def format_message(message):
 
 
 def send_mail_gmail(sender_username, sender_password, recipient_address, subject, body_template):
-    """Send an email from gmail"""
+    """Send an email from gmail.
+    Required gmail account to be configured to allow unsecure applications."""
     logging.debug(u'send_mail_gmail() locals()={0!r}'.format(locals()))# Record arguments
     # Try sending an email
     logging.info("Sending email from gmail to {0!r}".format(recipient_address))
@@ -233,7 +234,7 @@ def send_mail_smtp(
     smtp_server_address, smtp_server_port, sender_email_address,
     sender_username, sender_password, recipient_address,
     subject, body_template,
-    ):# TODO WIP
+    ):
     """
     Send one email using SMTP
     https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
@@ -322,7 +323,8 @@ def dev():
     # New SMTP
     # SMTP
     logging.info('Testing smtplib-based SMTP')
-    cfg_smtplib = YAMLConfigSmtplibEmail(config_path='config.email_smtplib.yaml')
+    smtp_config_path = os.path.join('config', 'email_smtplib.yaml')
+    cfg_smtplib = YAMLConfigSmtplibEmail(config_path=smtp_config_path)
     send_mail_smtp(
         smtp_server_address = cfg_smtplib.smtp_server_address,
         smtp_server_port = cfg_smtplib.smtp_server_port,
@@ -335,7 +337,8 @@ def dev():
     )
     # Gmail
     logging.info('Testing Gmail')
-    cfg_gmail = YAMLConfigYagmailEmail(config_path='config.email_gmail.yaml')
+    gmail_config_path = os.path.join('config', 'email_gmail.yaml')
+    cfg_gmail = YAMLConfigYagmailEmail(config_path=gmail_config_path)
     send_mail_gmail(
         sender_username=cfg_gmail.sender_username,
         sender_password=cfg_gmail.sender_password,
@@ -345,7 +348,8 @@ def dev():
     )
     # Logging smtphandler
     logging.info('Testing logging-based SMTP')
-    cfg_logging = YAMLConfigLoggingSmtpEmail(config_path='config.email_logging.yaml')
+    logging_config_path = os.path.join('config', 'email_logging.yaml')
+    cfg_logging = YAMLConfigLoggingSmtpEmail(config_path=logging_config_path)
     send_mail_logging(
         smtp_server_address = cfg_logging.smtp_server_address,
         smtp_server_port = cfg_logging.smtp_server_port,

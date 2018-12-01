@@ -3,7 +3,7 @@
 
 ## USAGE
 ## Set archive to scan
-This is set by creating a class for the board.
+This is set by creating a class for the boards.
 See desuarchive_check.py for an example.
 
 ## Set command to run on archive failure
@@ -14,7 +14,7 @@ See desuarchive_check.py for an example.
 #### Gmail
 It is reccomended to create an account specifically for this script as a security precaution.
 The Gmail account this script uses must be configured to allow unsecure applications to use it.
-Email configuration for Gmail is set through config.email_gmail.yaml
+Email configuration for Gmail is set through config/email_gmail.yaml
 - sender_username: Gmail username of sending account.
 - sender_password: Gmail password of sending account.
 - recipient_address: Email address to send an email to.
@@ -25,7 +25,7 @@ Email configuration for Gmail is set through config.email_gmail.yaml
 >```
 
 #### SMTP
-Set through config.email_smtp.yaml
+Set through config/email_smtp.yaml
 - body_template: The text you want to send.
 - recipient_address: The email address the message will be sent to.
 - sender_email_address: The email address we are sending the message from.
@@ -70,3 +70,13 @@ pip install yaml
 pip install yagmail
 pip install requests
 ```
+
+
+
+## Module overview
+
+- send_email.py: Everything relating to sending emails.
+- desuarchive_check.py: Example usage of this code.
+- auto_failover.py: Handles checking if the archive is down, contains base classes FourChanBoard, FoolFuukaBoard, and BaseFailureHandler.
+- common.py: shared utility functions.
+
